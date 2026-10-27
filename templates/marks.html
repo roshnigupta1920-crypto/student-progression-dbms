@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Subject &amp; Lab Marks &bull; Student Progression DBMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Subject &amp; Laboratory Marks</h1>
+    <p class="page-subtitle">Manage curriculum courses (Theory &amp; Lab) and student semester examination marks.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
+      <i class="bi bi-book me-1"></i> + New Course/Subject
+    </button>
+    <button type="button" class="btn btn-navy" data-bs-toggle="modal" data-bs-target="#addMarkModal">
+      <i class="bi bi-clipboard-plus me-1"></i> + Enter Marks
+    </button>
+  </div>
+</div>
+
+<!-- Tabs: Marks vs Course Directory -->
+<ul class="nav nav-tabs mb-4" id="marksTab" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active fw-semibold" id="marks-tab" data-bs-toggle="tab" data-bs-target="#marks-pane" type="button" role="tab">
+      <i class="bi bi-card-checklist me-1"></i> Semester Subject Marks ({{ marks_records|length }})
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link fw-semibold" id="subjects-tab" data-bs-toggle="tab" data-bs-target="#subjects-pane" type="button" role="tab">
+      <i class="bi bi-journals me-1"></i> Curriculum Subjects ({{ subjects|length }})
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content" id="marksTabContent">
+
+  <!-- PANE 1: SEMESTER MARKS TABLE -->
+  <div class="tab-pane fade show active" id="marks-pane" role="tabpanel">
+    <!-- Filter Toolbar -->
+    <div class="app-card mb-4">
+      <div class="app-card-body py-3">
+        <form method="get" action="{{ url_for('marks_list') }}" class="row g-2 align-items-center">
+          <div class="col-md-5">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+              <input type="text" name="q" class="form-control" placeholder="Search by student, roll number, or subject..." value="{{ q or '' }}">
+            </div>
+          </div>
+          <div class="col-md-3">
+            <select name="type" class="form-select form-select-sm">
+              <option value="">All Types (Theory &amp; Lab)</option>
+              <option value="Theory" {% if type_filter == 'Theory' %}selected{% endif %}>Theory Subjects Only</option>
+              <option value="Lab" {% if type_filter == 'Lab' %}selected{% endif %}>Laboratory / Practicals Only</option>
+            </select>
+          </div>
+          <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-navy">Filter</button>
+            {% if q or type_filter %}
+              <a href="{{ url_for('marks_list') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="app-card">
+      <div class="app-card-header">
+        <div class="d-flex align-items-center gap-2">
+          <h2 class="app-card-title"><i class="bi bi-clipboard2-check text-navy"></i> Recorded Examination Scores</h2>
+          <span class="badge bg-secondary-subtle text-secondary">{{ marks_records|length }} Entries</span>
+        </div>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-custom">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Roll No.</th>
+                <th>Sem</th>
+                <th>Subject</th>
+                <th>Type</th>
+                <th>Internal</th>
+                <th>External</th>
+                <th>Practical</th>
+                <th>Total</th>
+                <th>Max</th>
+                <th>Grade</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in marks_records %}
+                <tr>
+                  <td class="fw-semibold">
+                    <a href="{{ url_for('student_detail', sid=m.student_id) }}" class="text-decoration-none text-dark">
+                      {{ m.student_name }}
+                    </a>
+                  </td>
+                  <td class="fw-bold font-monospace text-primary">{{ m.roll_no }}</td>
+                  <td>Sem {{ m.semester_no }}</td>
+                  <td>
+                    <strong>{{ m.subject_code }}</strong> &ndash; {{ m.subject_name }}
+                  </td>
+                  <td>
+                    <span class="badge-pill-soft {{ m.subject_type|lower }}">
+                      {{ m.subject_type }}
+                    </span>
+                  </td>
+                  <td>{{ m.internal_marks if m.internal_marks is not none else '-' }}</td>
+                  <td>{{ m.external_marks if m.external_marks is not none else '-' }}</td>
+                  <td>{{ m.practical_marks if m.practical_marks is not none else '-' }}</td>
+                  <td class="fw-bold text-navy">{{ m.total_marks if m.total_marks is not none else '-' }}</td>
+                  <td>{{ m.max_marks }}</td>
+                  <td><span class="badge bg-secondary">{{ m.grade or '-' }}</span></td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <button type="button" class="btn btn-outline-secondary btn-sm-action" data-bs-toggle="modal" data-bs-target="#editMarkModal{{ m.mark_id }}">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <form method="post" action="{{ url_for('delete_marks', mid=m.mark_id) }}" class="d-inline" onsubmit="return confirm('Delete this mark entry?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm-action"><i class="bi bi-trash"></i></button>
+                      </form>
+                    </div>
+
+                    <!-- Edit Mark Modal -->
+                    <div class="modal fade text-start" id="editMarkModal{{ m.mark_id }}" tabindex="-1" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <form method="post" action="{{ url_for('edit_marks', mid=m.mark_id) }}">
+                            <div class="modal-header">
+                              <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Marks: {{ m.roll_no }} &ndash; {{ m.subject_code }}</h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                              <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                  <label class="form-label">Internal</label>
+                                  <input type="number" step="0.5" min="0" max="100" name="internal_marks" class="form-control" value="{{ m.internal_marks if m.internal_marks is not none else '' }}">
+                                </div>
+                                <div class="col-4">
+                                  <label class="form-label">External</label>
+                                  <input type="number" step="0.5" min="0" max="100" name="external_marks" class="form-control" value="{{ m.external_marks if m.external_marks is not none else '' }}">
+                                </div>
+                                <div class="col-4">
+                                  <label class="form-label">Practical</label>
+                                  <input type="number" step="0.5" min="0" max="100" name="practical_marks" class="form-control" value="{{ m.practical_marks if m.practical_marks is not none else '' }}">
+                                </div>
+                              </div>
+                              <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                  <label class="form-label">Total Marks</label>
+                                  <input type="number" step="0.5" min="0" name="total_marks" class="form-control" value="{{ m.total_marks if m.total_marks is not none else '' }}">
+                                </div>
+                                <div class="col-4">
+                                  <label class="form-label">Max Marks</label>
+                                  <input type="number" step="0.5" min="1" name="max_marks" class="form-control" value="{{ m.max_marks }}" required>
+                                </div>
+                                <div class="col-4">
+                                  <label class="form-label">Grade</label>
+                                  <input type="text" name="grade" class="form-control" value="{{ m.grade or '' }}">
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                              <button type="submit" class="btn btn-navy btn-sm">Update Marks</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="12" class="text-center py-5 text-muted">No marks records found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANE 2: SUBJECTS DIRECTORY TABLE -->
+  <div class="tab-pane fade" id="subjects-pane" role="tabpanel">
+    <div class="app-card">
+      <div class="app-card-header">
+        <div class="d-flex align-items-center gap-2">
+          <h2 class="app-card-title"><i class="bi bi-book-half text-navy"></i> Course Subjects Catalogue</h2>
+          <span class="badge bg-secondary-subtle text-secondary">{{ subjects|length }} Subjects</span>
+        </div>
+        <button type="button" class="btn btn-sm btn-navy" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
+          <i class="bi bi-plus-circle me-1"></i> Add Subject
+        </button>
+      </div>
+      <div class="app-card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-custom">
+            <thead>
+              <tr>
+                <th>Subject Code</th>
+                <th>Subject / Lab Name</th>
+                <th>Type</th>
+                <th>Credits</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in subjects %}
+                <tr>
+                  <td class="font-monospace fw-bold text-primary">{{ sub.subject_code }}</td>
+                  <td class="fw-semibold">{{ sub.subject_name }}</td>
+                  <td>
+                    <span class="badge-pill-soft {{ sub.subject_type|lower }}">
+                      {{ sub.subject_type }}
+                    </span>
+                  </td>
+                  <td>{{ sub.credits }}</td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <button type="button" class="btn btn-outline-secondary btn-sm-action" data-bs-toggle="modal" data-bs-target="#editSubjectModal{{ sub.subject_id }}">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <form method="post" action="{{ url_for('delete_subject', suid=sub.subject_id) }}" class="d-inline" onsubmit="return confirm('Delete this subject and its associated marks records?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm-action"><i class="bi bi-trash"></i></button>
+                      </form>
+                    </div>
+
+                    <!-- Edit Subject Modal -->
+                    <div class="modal fade text-start" id="editSubjectModal{{ sub.subject_id }}" tabindex="-1" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <form method="post" action="{{ url_for('edit_subject', suid=sub.subject_id) }}">
+                            <div class="modal-header">
+                              <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Subject: {{ sub.subject_code }}</h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                              <div class="mb-3">
+                                <label class="form-label">Subject Code <span class="text-danger">*</span></label>
+                                <input type="text" name="subject_code" class="form-control" value="{{ sub.subject_code }}" required>
+                              </div>
+                              <div class="mb-3">
+                                <label class="form-label">Subject Name <span class="text-danger">*</span></label>
+                                <input type="text" name="subject_name" class="form-control" value="{{ sub.subject_name }}" required>
+                              </div>
+                              <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                  <label class="form-label">Type <span class="text-danger">*</span></label>
+                                  <select name="subject_type" class="form-select">
+                                    <option value="Theory" {% if sub.subject_type == 'Theory' %}selected{% endif %}>Theory Course</option>
+                                    <option value="Lab" {% if sub.subject_type == 'Lab' %}selected{% endif %}>Laboratory Course</option>
+                                  </select>
+                                </div>
+                                <div class="col-6">
+                                  <label class="form-label">Credits</label>
+                                  <input type="number" step="0.5" min="0" max="10" name="credits" class="form-control" value="{{ sub.credits }}">
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                              <button type="submit" class="btn btn-navy btn-sm">Update Subject</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="5" class="text-center py-4 text-muted">No subjects recorded.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: ADD SUBJECT -->
+<div class="modal fade" id="addSubjectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('add_subject') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-book-plus me-2 text-primary"></i>Add New Curriculum Subject</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Subject Code <span class="text-danger">*</span></label>
+            <input type="text" name="subject_code" class="form-control" placeholder="e.g. CS202" required>
+            <div class="form-text">Must be a unique course code.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Subject Name <span class="text-danger">*</span></label>
+            <input type="text" name="subject_name" class="form-control" placeholder="e.g. Database Management Systems" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Course Type <span class="text-danger">*</span></label>
+              <select name="subject_type" class="form-select">
+                <option value="Theory" selected>Theory Subject</option>
+                <option value="Lab">Laboratory / Practical</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Credits</label>
+              <input type="number" step="0.5" min="0" max="10" name="credits" class="form-control" value="4.0">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-navy btn-sm">Save Subject</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ADD MARK -->
+<div class="modal fade" id="addMarkModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('add_marks_direct') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-clipboard2-plus me-2 text-primary"></i>Record Semester Subject Mark</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Select Semester Record <span class="text-danger">*</span></label>
+            <select name="semester_id" class="form-select" required>
+              <option value="">-- Choose Student &amp; Semester --</option>
+              {% for s in all_semesters %}
+                <option value="{{ s.semester_id }}">{{ s.roll_no }} - {{ s.student_name }} (Sem {{ s.semester_no }} - {{ s.academic_year or 'N/A' }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Select Subject <span class="text-danger">*</span></label>
+            <select name="subject_id" class="form-select" required>
+              <option value="">-- Choose Subject --</option>
+              {% for sub in subjects %}
+                <option value="{{ sub.subject_id }}">{{ sub.subject_code }} &ndash; {{ sub.subject_name }} ({{ sub.subject_type }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label">Internal</label>
+              <input type="number" step="0.5" min="0" max="100" name="internal_marks" id="add_internal" class="form-control" placeholder="28">
+            </div>
+            <div class="col-4">
+              <label class="form-label">External</label>
+              <input type="number" step="0.5" min="0" max="100" name="external_marks" id="add_external" class="form-control" placeholder="62">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Practical</label>
+              <input type="number" step="0.5" min="0" max="100" name="practical_marks" id="add_practical" class="form-control" placeholder="0">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label">Total Marks</label>
+              <input type="number" step="0.5" min="0" name="total_marks" id="add_total_marks" class="form-control" placeholder="90">
+            </div>
+            <div class="col-4">
+              <label class="form-label">Max Marks</label>
+              <input type="number" step="0.5" min="1" name="max_marks" class="form-control" value="100" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Grade</label>
+              <input type="text" name="grade" class="form-control" placeholder="O / A+ / B">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-navy btn-sm">Save Marks</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto sum internal + external + practical into total marks
+  const intInput = document.getElementById('add_internal');
+  const extInput = document.getElementById('add_external');
+  const pracInput = document.getElementById('add_practical');
+  const totInput = document.getElementById('add_total_marks');
+
+  function autoSumMarks() {
+    const i = parseFloat(intInput.value) || 0;
+    const e = parseFloat(extInput.value) || 0;
+    const p = parseFloat(pracInput.value) || 0;
+    if (intInput.value !== '' || extInput.value !== '' || pracInput.value !== '') {
+      totInput.value = (i + e + p).toFixed(1);
+    }
+  }
+
+  if (intInput && extInput && pracInput) {
+    intInput.addEventListener('input', autoSumMarks);
+    extInput.addEventListener('input', autoSumMarks);
+    pracInput.addEventListener('input', autoSumMarks);
+  }
+</script>
+{% endblock %}
