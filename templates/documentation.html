@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}User &amp; Technical Documentation &bull; Student Progression DBMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">User &amp; Technical Documentation</h1>
+    <p class="page-subtitle">Comprehensive design specifications, 3NF normalization justification, schema constraints, and college evaluation viva guide.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="#viva" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-patch-question-fill me-1"></i> Viva Q&amp;A Prep
+    </a>
+    <a href="#3nf" class="btn btn-navy btn-sm">
+      <i class="bi bi-diagram-3-fill me-1"></i> 3NF Justification
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Table of Contents Sidebar -->
+  <div class="col-lg-3">
+    <div class="app-card sticky-top" style="top: 80px;">
+      <div class="app-card-header">
+        <h4 class="app-card-title fs-6"><i class="bi bi-list-nested text-navy"></i> Contents</h4>
+      </div>
+      <div class="list-group list-group-flush small">
+        <a href="#overview" class="list-group-item list-group-item-action">1. Project Overview</a>
+        <a href="#tech-stack" class="list-group-item list-group-item-action">2. Technology Stack</a>
+        <a href="#3nf" class="list-group-item list-group-item-action">3. 3NF Normalization Analysis</a>
+        <a href="#schema" class="list-group-item list-group-item-action">4. Schema &amp; Constraints Matrix</a>
+        <a href="#crud" class="list-group-item list-group-item-action">5. Complete CRUD Operations</a>
+        <a href="#sync-docs" class="list-group-item list-group-item-action">6. Google Sheets One-Way Sync</a>
+        <a href="#viva" class="list-group-item list-group-item-action fw-bold text-primary">7. College Viva Q&amp;A Guide</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Documentation Content -->
+  <div class="col-lg-9">
+
+    <!-- Section 1: Overview -->
+    <div class="app-card mb-4" id="overview">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-info-circle-fill text-primary"></i> 1. Project Overview</h2>
+      </div>
+      <div class="app-card-body">
+        <p>
+          The <strong>Student Academic Progression and Portfolio Management System</strong> is a full-stack DBMS application engineered to address the critical challenges of monitoring student academic trajectories, prior qualifying records, multi-semester SGPA/CGPA trends, theory versus laboratory performance, portfolio achievements, and formal academic leave/gap intervals.
+        </p>
+        <p>
+          Unlike conventional student databases that flatten records into single monolithic spreadsheets with rampant redundancy, this system implements a rigorous relational schema normalized to <strong>Third Normal Form (3NF)</strong>, powered by MySQL 8.0, Flask, Chart.js, and Google Sheets API integration.
+        </p>
+      </div>
+    </div>
+
+    <!-- Section 2: Technology Stack -->
+    <div class="app-card mb-4" id="tech-stack">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-cpu-fill text-navy"></i> 2. Technology Stack</h2>
+      </div>
+      <div class="app-card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border">
+              <h6 class="fw-bold text-navy"><i class="bi bi-filetype-html me-2 text-danger"></i>Frontend Tier</h6>
+              <ul class="small text-muted mb-0 ps-3">
+                <li><strong>HTML5 &amp; CSS3:</strong> Semantic markup, custom white &amp; dark blue design tokens.</li>
+                <li><strong>Bootstrap 5.3:</strong> Responsive grid layout, modals, tables, and form components.</li>
+                <li><strong>Chart.js:</strong> Dynamic SGPA/CGPA progression curves with gap point annotations and distribution charts.</li>
+                <li><strong>Bootstrap Icons:</strong> Modern UI glyphs and iconography.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 bg-light rounded border">
+              <h6 class="fw-bold text-navy"><i class="bi bi-filetype-py me-2 text-primary"></i>Backend &amp; Database Tier</h6>
+              <ul class="small text-muted mb-0 ps-3">
+                <li><strong>Python Flask:</strong> Application routing, session handling, parameterized query execution.</li>
+                <li><strong>MySQL 8.0:</strong> InnoDB storage engine, foreign keys, CHECK constraints, ACID transactions.</li>
+                <li><strong>mysql-connector-python:</strong> Secure parameterized SQL connection pooling.</li>
+                <li><strong>gspread &amp; google-auth:</strong> Service-account authenticated one-way sync.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: 3NF Normalization Analysis -->
+    <div class="app-card mb-4" id="3nf">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-diagram-3-fill text-success"></i> 3. Database Design &amp; 3NF Normalization Analysis</h2>
+      </div>
+      <div class="app-card-body">
+        <p>
+          A relational database is in <strong>Third Normal Form (3NF)</strong> if and only if it is in 2NF and every non-prime attribute is non-transitively dependent on every candidate key. The system enforces 3NF across 8 distinct entities:
+        </p>
+        
+        <div class="table-responsive">
+          <table class="table table-bordered small">
+            <thead class="table-light">
+              <tr>
+                <th>Entity Table</th>
+                <th>Candidate / Primary Key</th>
+                <th>1NF (Atomicity)</th>
+                <th>2NF (No Partial Dependency)</th>
+                <th>3NF (No Transitive Dependency)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold font-monospace">students</td>
+                <td><code>student_id</code>, <code>roll_no</code></td>
+                <td>Every column holds atomic values. No multivalued phone or mark lists.</td>
+                <td>Single-column primary key; partial dependency cannot exist.</td>
+                <td>All attributes (name, email, status) depend directly on the student key.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">academic_history</td>
+                <td><code>history_id</code></td>
+                <td>Atomic qualification entries (Secondary, Higher Secondary, Diploma).</td>
+                <td>Separated from <code>students</code> to eliminate repeating columns.</td>
+                <td>Marks and percentages relate solely to the specific prior degree record.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">semesters</td>
+                <td><code>semester_id</code> (Alt: <code>student_id, semester_no</code>)</td>
+                <td>Atomic semester numbers, SGPA, CGPA, gap indicators.</td>
+                <td>All grade points depend fully on <code>(student_id, semester_no)</code>.</td>
+                <td>Eliminates transitive semester attributes from the parent student entity.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">subjects</td>
+                <td><code>subject_id</code>, <code>subject_code</code></td>
+                <td>Course code, course name, type (Theory/Lab), credits.</td>
+                <td>Subject definition is independent of any specific student enrollment.</td>
+                <td>Credits and course types depend solely on the subject candidate key.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">semester_subject_marks</td>
+                <td><code>mark_id</code> (Alt: <code>semester_id, subject_id</code>)</td>
+                <td>Internal, external, practical, total, and letter grade.</td>
+                <td>Junction table resolving the Many-to-Many relationship between semesters and subjects.</td>
+                <td>Marks are dependent entirely on the junction pair <code>(semester_id, subject_id)</code>.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">seminars</td>
+                <td><code>seminar_id</code></td>
+                <td>Title, seminar_type (Internal/External), date, organizer, certificate.</td>
+                <td>Prevents multi-valued presentation arrays inside student rows.</td>
+                <td>Presentation details depend strictly on the seminar primary key.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">activities</td>
+                <td><code>activity_id</code></td>
+                <td>Title, activity_type, role, date, organizer.</td>
+                <td>Separates portfolio events into discrete normalized records.</td>
+                <td>Attributes describe the activity event, eliminating transitive redundancy.</td>
+              </tr>
+              <tr>
+                <td class="fw-bold font-monospace">drop_years</td>
+                <td><code>drop_id</code></td>
+                <td>Start year, end year, official justification.</td>
+                <td>Independent interval entity for tracking academic hiatuses.</td>
+                <td>Dates and justification depend only on the drop interval key.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Schema & Constraints -->
+    <div class="app-card mb-4" id="schema">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-shield-lock-fill text-warning"></i> 4. Relational Constraints &amp; Integrity Enforcement</h2>
+      </div>
+      <div class="app-card-body">
+        <ul class="small ps-3 mb-0">
+          <li><strong>Primary Keys &amp; Auto-Increment:</strong> Surrogate integer primary keys ensure fast indexing and immutable join identities.</li>
+          <li><strong>Unique Keys:</strong>
+            <code>students.roll_no</code> (unique roll number), 
+            <code>students.email</code>, 
+            <code>subjects.subject_code</code>, 
+            <code>UNIQUE(student_id, semester_no)</code> (prevents duplicate semester entries), 
+            <code>UNIQUE(semester_id, subject_id)</code> (prevents duplicate marks entries for the same course in a semester).
+          </li>
+          <li><strong>Foreign Key Cascades:</strong> Dependent tables utilize <code>ON DELETE CASCADE</code> referencing parent keys. Deleting a student safely cascades to remove related academic records without leaving orphaned rows.</li>
+          <li><strong>MySQL 8 CHECK Constraints:</strong>
+            <code>chk_sgpa CHECK (sgpa BETWEEN 0 AND 10)</code>, 
+            <code>chk_cgpa CHECK (cgpa BETWEEN 0 AND 10)</code>, 
+            <code>chk_semester_no CHECK (semester_no BETWEEN 1 AND 12)</code>, 
+            <code>chk_history_percentage CHECK (percentage BETWEEN 0 AND 100)</code>, 
+            <code>chk_drop_years CHECK (year_end >= year_start)</code>, 
+            <code>chk_max_marks CHECK (max_marks > 0)</code>.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Section 5: CRUD Operations -->
+    <div class="app-card mb-4" id="crud">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-pencil-square text-info"></i> 5. Complete Working CRUD Operations</h2>
+      </div>
+      <div class="app-card-body">
+        <p class="small text-muted">
+          All eight entities support full Create, Read, Update, and Delete operations using parameterized SQL statements (e.g. <code>%s</code> placeholders in MySQL Connector) to neutralize SQL Injection vulnerabilities:
+        </p>
+        <div class="row g-2 small">
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>1. Students:</strong> <code>/students</code>, <code>/students/add</code>, <code>/students/edit/&lt;id&gt;</code>, <code>/students/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>2. Academic History:</strong> <code>/academic-history</code>, <code>/academic-history/add</code>, <code>/academic-history/edit/&lt;id&gt;</code>, <code>/academic-history/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>3. Semesters:</strong> <code>/semesters</code>, <code>/semesters/add/&lt;id&gt;</code>, <code>/semesters/edit/&lt;id&gt;</code>, <code>/semesters/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>4. Subject &amp; Lab Marks:</strong> <code>/marks</code>, <code>/marks/add</code>, <code>/marks/edit/&lt;id&gt;</code>, <code>/marks/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>5. Curriculum Subjects:</strong> <code>/subjects/add</code>, <code>/subjects/edit/&lt;id&gt;</code>, <code>/subjects/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>6. Seminars:</strong> <code>/seminars</code>, <code>/seminars/add</code>, <code>/seminars/edit/&lt;id&gt;</code>, <code>/seminars/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>7. Activities:</strong> <code>/activities</code>, <code>/activities/add</code>, <code>/activities/edit/&lt;id&gt;</code>, <code>/activities/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-2 border rounded bg-light">
+              <strong>8. Drop / Gap Years:</strong> <code>/drop-years</code>, <code>/drop-years/add</code>, <code>/drop-years/edit/&lt;id&gt;</code>, <code>/drop-years/delete/&lt;id&gt;</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 6: Sync Docs -->
+    <div class="app-card mb-4" id="sync-docs">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-cloud-arrow-up-fill text-primary"></i> 6. Google Sheets One-Way Synchronization Protocol</h2>
+      </div>
+      <div class="app-card-body">
+        <p class="small text-muted mb-2">
+          The Google Sheets synchronization engine executes a <strong>snapshot push</strong> using <code>gspread</code> and <code>google-auth</code>:
+        </p>
+        <ol class="small text-muted ps-3 mb-0">
+          <li>The application queries relational snapshots from MySQL for all 8 entities.</li>
+          <li>It authenticates via Google Cloud Service Account credentials (<code>GOOGLE_CREDENTIALS</code>).</li>
+          <li>It connects to the Google Spreadsheet specified by <code>GOOGLE_SHEET_ID</code>.</li>
+          <li>For each entity table, it verifies or automatically generates the target worksheet tab (<code>Students</code>, <code>Academic_History</code>, <code>Semesters</code>, <code>Subjects</code>, <code>Semester_Marks</code>, <code>Seminars</code>, <code>Activities</code>, <code>Drop_Years</code>).</li>
+          <li>It clears the worksheet contents and bulk updates the header and row values with <code>value_input_option='USER_ENTERED'</code>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Section 7: College Viva Voce Prep -->
+    <div class="app-card mb-4" id="viva">
+      <div class="app-card-header bg-primary-subtle">
+        <h2 class="app-card-title text-primary"><i class="bi bi-mortarboard-fill me-2"></i> 7. College Evaluation &amp; Viva Voce Q&amp;A Guide</h2>
+      </div>
+      <div class="app-card-body">
+        <div class="accordion" id="vivaAccordion">
+          
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+              <button class="accordion-button fw-bold text-navy" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                Q1: Why is this database design in 3NF and not 2NF or unnormalized?
+              </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#vivaAccordion">
+              <div class="accordion-body small text-muted">
+                <strong>Answer:</strong> An unnormalized design would store student details, qualifying marks, multi-semester grades, and seminar arrays in a single table, causing update, deletion, and insertion anomalies. In our schema:
+                <br>1. <strong>1NF:</strong> All attribute values are atomic (no repeating groups or comma-separated lists).
+                <br>2. <strong>2NF:</strong> Every table has single-column keys or composite keys where all non-key attributes depend on the entire primary key.
+                <br>3. <strong>3NF:</strong> There are no transitive dependencies (e.g. subject credits depend on <code>subject_id</code>, not <code>student_id</code>; gap records depend on <code>drop_id</code>). Thus, every non-prime attribute depends only on the primary key, directly and non-transitively.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+              <button class="accordion-button collapsed fw-bold text-navy" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                Q2: How does the system handle Many-to-Many relationships?
+              </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#vivaAccordion">
+              <div class="accordion-body small text-muted">
+                <strong>Answer:</strong> A Many-to-Many relationship exists between <code>semesters</code> and <code>subjects</code>: a semester has multiple subjects, and the same subject code is enrolled across multiple students' semesters. We resolve this using the junction table <code>semester_subject_marks</code>, which carries foreign keys to both parent tables and enforces a composite <code>UNIQUE KEY (semester_id, subject_id)</code> to prevent duplicate grade entries for the same course in any given semester.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingThree">
+              <button class="accordion-button collapsed fw-bold text-navy" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                Q3: Why use ON DELETE CASCADE instead of manual deletion?
+              </button>
+            </h2>
+            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#vivaAccordion">
+              <div class="accordion-body small text-muted">
+                <strong>Answer:</strong> <code>ON DELETE CASCADE</code> guarantees <strong>referential integrity</strong> at the database engine level. If a student is removed from <code>students</code>, MySQL InnoDB automatically removes all their dependent academic history, semester scores, marks, seminars, and activity records. This prevents orphaned records from cluttering the database and ensures consistency even if a delete command is issued directly in SQL Workbench.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingFour">
+              <button class="accordion-button collapsed fw-bold text-navy" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                Q4: How does the system enforce validation both in UI and Database?
+              </button>
+            </h2>
+            <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#vivaAccordion">
+              <div class="accordion-body small text-muted">
+                <strong>Answer:</strong> The system enforces a <strong>defense-in-depth</strong> architecture:
+                <br>1. <strong>Frontend / HTML5:</strong> <code>required</code>, <code>min</code>, <code>max</code>, <code>step</code>, <code>type="email"</code> for immediate user feedback.
+                <br>2. <strong>Backend / Python:</strong> Range checks, null conversions, try-catch error trapping with informative flash messages.
+                <br>3. <strong>Database / MySQL 8:</strong> Declarative <code>CHECK</code> constraints (e.g. <code>sgpa BETWEEN 0 AND 10</code>, <code>year_end >= year_start</code>) and <code>UNIQUE</code> constraints that reject illegal data even under concurrent or manual execution.
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingFive">
+              <button class="accordion-button collapsed fw-bold text-navy" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive">
+                Q5: Why is Google Sheets sync designed as One-Way (MySQL &rarr; Sheets)?
+              </button>
+            </h2>
+            <div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#vivaAccordion">
+              <div class="accordion-body small text-muted">
+                <strong>Answer:</strong> In enterprise and institutional DBMS architectures, the relational database must maintain the authoritative <strong>Single Source of Truth (SSOT)</strong>. Allowing unvalidated two-way edits from arbitrary spreadsheet cells back into MySQL would bypass relational constraints, type checks, and referential integrity. Therefore, one-way synchronization publishes snapshot reports safely to stakeholders while retaining MySQL as the authoritative transaction ledger.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
