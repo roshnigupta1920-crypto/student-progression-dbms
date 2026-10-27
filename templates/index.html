@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard &bull; Student Progression &amp; Portfolio DBMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Academic &amp; Portfolio Dashboard</h1>
+    <p class="page-subtitle">Real-time overview of student academic progression, drop years, and achievement portfolios.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    {% if total_students == 0 and db_status.connected %}
+      <form action="{{ url_for('seed_database') }}" method="post" onsubmit="return confirm('Load fictional college demo data into the database?');">
+        <button type="submit" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-magic me-1"></i> Load Demo Seed Data
+        </button>
+      </form>
+    {% endif %}
+    <a href="{{ url_for('students_list') }}" class="btn btn-navy">
+      <i class="bi bi-plus-circle"></i> Add Student
+    </a>
+  </div>
+</div>
+
+<!-- Quick Statistics Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-sm-6">
+    <div class="stat-card">
+      <div class="stat-info">
+        <h3>{{ total_students }}</h3>
+        <p>Total Students</p>
+      </div>
+      <div class="stat-icon blue">
+        <i class="bi bi-people-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-sm-6">
+    <div class="stat-card">
+      <div class="stat-info">
+        <h3>{{ active_students }}</h3>
+        <p>Active Students</p>
+      </div>
+      <div class="stat-icon green">
+        <i class="bi bi-person-check-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-sm-6">
+    <div class="stat-card">
+      <div class="stat-info">
+        <h3>{{ graduated_students }} / {{ dropped_students }}</h3>
+        <p>Graduated / Dropped</p>
+      </div>
+      <div class="stat-icon amber">
+        <i class="bi bi-mortarboard-fill"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-3 col-sm-6">
+    <div class="stat-card">
+      <div class="stat-info">
+        <h3>{{ total_seminars }} / {{ total_activities }}</h3>
+        <p>Seminars / Activities</p>
+      </div>
+      <div class="stat-icon purple">
+        <i class="bi bi-award-fill"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics Charts Row -->
+<div class="row g-3 mb-4">
+  <!-- Chart 1: Student Status Distribution -->
+  <div class="col-lg-4">
+    <div class="app-card h-100 mb-0">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-pie-chart-fill text-primary"></i> Enrollment Status</h2>
+      </div>
+      <div class="app-card-body d-flex flex-column align-items-center justify-content-center">
+        <div style="max-height: 230px; width: 100%;">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Average Semester SGPA -->
+  <div class="col-lg-5">
+    <div class="app-card h-100 mb-0">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-bar-chart-line-fill text-info"></i> Semester-wise Avg SGPA</h2>
+      </div>
+      <div class="app-card-body">
+        <div style="max-height: 230px; width: 100%;">
+          <canvas id="semesterSgpaChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 3: Portfolio Breakdown -->
+  <div class="col-lg-3">
+    <div class="app-card h-100 mb-0">
+      <div class="app-card-header">
+        <h2 class="app-card-title"><i class="bi bi-diagram-3-fill text-success"></i> Portfolio Split</h2>
+      </div>
+      <div class="app-card-body d-flex flex-column align-items-center justify-content-center">
+        <div style="max-height: 230px; width: 100%;">
+          <canvas id="portfolioChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Records Panel with Search & Filter -->
+<div class="app-card">
+  <div class="app-card-header">
+    <div class="d-flex align-items-center gap-2">
+      <h2 class="app-card-title"><i class="bi bi-table text-navy"></i> Student Directory</h2>
+      <span class="badge bg-secondary-subtle text-secondary">{{ students|length }} records</span>
+    </div>
+    <form method="get" action="{{ url_for('index') }}" class="d-flex align-items-center gap-2">
+      <div class="input-group input-group-sm">
+        <input type="text" name="q" class="form-control" placeholder="Search name or roll..." value="{{ q or '' }}">
+        <button class="btn btn-navy" type="submit">Filter</button>
+        {% if q %}
+          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+  <div class="app-card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-custom">
+        <thead>
+          <tr>
+            <th>Roll Number</th>
+            <th>Full Name</th>
+            <th>Email Address</th>
+            <th>Admission Year</th>
+            <th>Status</th>
+            <th>Academic Gap?</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+            <tr>
+              <td class="fw-bold font-monospace text-primary">{{ s.roll_no }}</td>
+              <td class="fw-semibold">{{ s.first_name }} {{ s.last_name }}</td>
+              <td>{{ s.email or '<span class="text-muted">-</span>'|safe }}</td>
+              <td>{{ s.admission_year or '<span class="text-muted">-</span>'|safe }}</td>
+              <td>
+                <span class="badge-status {{ s.current_status|lower }}">
+                  <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i>
+                  {{ s.current_status }}
+                </span>
+              </td>
+              <td>
+                {% if s.has_gap %}
+                  <span class="badge-status gap">
+                    <i class="bi bi-exclamation-circle-fill"></i> Drop / Gap Logged
+                  </span>
+                {% else %}
+                  <span class="text-muted small">None</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('student_detail', sid=s.student_id) }}" class="btn btn-sm btn-outline-primary btn-sm-action">
+                  <i class="bi bi-person-lines-fill"></i> View Profile
+                </a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
+                {% if q %}
+                  No student records matched "<strong>{{ q }}</strong>". <a href="{{ url_for('index') }}">Clear search</a>.
+                {% else %}
+                  No students in the database yet. Click <strong>+ Add Student</strong> or <strong>Load Demo Seed Data</strong> to begin!
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Chart 1: Enrollment Status Doughnut Chart
+  const statusCtx = document.getElementById('statusChart');
+  if (statusCtx) {
+    new Chart(statusCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Active', 'Graduated', 'Dropped', 'On Leave'],
+        datasets: [{
+          data: [{{ active_students }}, {{ graduated_students }}, {{ dropped_students }}, {{ on_leave_students }}],
+          backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // Chart 2: Semester-wise Avg SGPA
+  const semCtx = document.getElementById('semesterSgpaChart');
+  if (semCtx) {
+    const semLabels = {{ sem_avg_labels|tojson }};
+    const semValues = {{ sem_avg_values|tojson }};
+    new Chart(semCtx, {
+      type: 'bar',
+      data: {
+        labels: semLabels.length ? semLabels : ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+        datasets: [{
+          label: 'Average SGPA',
+          data: semValues.length ? semValues : [0, 0, 0, 0],
+          backgroundColor: 'rgba(37, 99, 235, 0.75)',
+          borderColor: '#1d4ed8',
+          borderWidth: 1.5,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { min: 0, max: 10, title: { display: true, text: 'SGPA (0-10)', font: { size: 11 } } }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
+  // Chart 3: Portfolio Split
+  const portCtx = document.getElementById('portfolioChart');
+  if (portCtx) {
+    new Chart(portCtx, {
+      type: 'pie',
+      data: {
+        labels: ['Internal Seminars', 'External Seminars', 'Activities'],
+        datasets: [{
+          data: [{{ internal_seminars }}, {{ external_seminars }}, {{ total_activities }}],
+          backgroundColor: ['#0284c7', '#8b5cf6', '#f97316'],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}
