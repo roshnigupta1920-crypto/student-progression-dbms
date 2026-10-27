@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Semester Results &bull; Student Progression DBMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Semester Results &amp; Academic Progression</h1>
+    <p class="page-subtitle">Track SGPA, cumulative CGPA, and formal academic gap indicators semester-by-semester.</p>
+  </div>
+  <button type="button" class="btn btn-navy" data-bs-toggle="modal" data-bs-target="#addSemesterModal">
+    <i class="bi bi-plus-circle me-1"></i> Add Semester Result
+  </button>
+</div>
+
+<!-- Filters Toolbar -->
+<div class="app-card mb-4">
+  <div class="app-card-body py-3">
+    <form method="get" action="{{ url_for('semesters_list') }}" class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" class="form-control" placeholder="Search by student name or roll number..." value="{{ q or '' }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <select name="sem_no" class="form-select form-select-sm">
+          <option value="">All Semesters (1 - 12)</option>
+          {% for n in range(1, 9) %}
+            <option value="{{ n }}" {% if sem_filter == n|string %}selected{% endif %}>Semester {{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-navy">Filter</button>
+        {% if q or sem_filter %}
+          <a href="{{ url_for('semesters_list') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Semester Results Table -->
+<div class="app-card">
+  <div class="app-card-header">
+    <div class="d-flex align-items-center gap-2">
+      <h2 class="app-card-title"><i class="bi bi-graph-up text-navy"></i> Semester Results Records</h2>
+      <span class="badge bg-secondary-subtle text-secondary">{{ semester_records|length }} Semesters</span>
+    </div>
+  </div>
+  <div class="app-card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-custom">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Roll No.</th>
+            <th>Semester</th>
+            <th>Academic Year</th>
+            <th>SGPA</th>
+            <th>CGPA</th>
+            <th>Academic Gap?</th>
+            <th>Remarks</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in semester_records %}
+            <tr>
+              <td class="fw-semibold">
+                <a href="{{ url_for('student_detail', sid=s.student_id) }}" class="text-decoration-none text-dark">
+                  {{ s.student_name }}
+                </a>
+              </td>
+              <td class="fw-bold font-monospace text-primary">{{ s.roll_no }}</td>
+              <td class="fw-bold">Sem {{ s.semester_no }}</td>
+              <td>{{ s.academic_year or '-' }}</td>
+              <td class="fw-bold text-primary">{{ "%.2f"|format(s.sgpa) if s.sgpa is not none else '-' }}</td>
+              <td class="fw-bold text-success">{{ "%.2f"|format(s.cgpa) if s.cgpa is not none else '-' }}</td>
+              <td>
+                {% if s.is_gap_after %}
+                  <span class="badge-status gap">
+                    <i class="bi bi-pause-fill"></i> Gap: {{ s.gap_years }} Yr
+                  </span>
+                {% else %}
+                  <span class="text-muted small">None</span>
+                {% endif %}
+              </td>
+              <td>{{ s.remarks or '-' }}</td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <button type="button" class="btn btn-outline-secondary btn-sm-action" data-bs-toggle="modal" data-bs-target="#editSemModal{{ s.semester_id }}">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="post" action="{{ url_for('delete_semester', smid=s.semester_id) }}" class="d-inline" onsubmit="return confirm('Delete this semester record?');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm-action">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+
+                <!-- Edit Semester Modal -->
+                <div class="modal fade text-start" id="editSemModal{{ s.semester_id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <form method="post" action="{{ url_for('edit_semester', smid=s.semester_id) }}">
+                        <div class="modal-header">
+                          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Semester: {{ s.student_name }} (Sem {{ s.semester_no }})</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="row g-2 mb-3">
+                            <div class="col-6">
+                              <label class="form-label">Semester Number <span class="text-danger">*</span></label>
+                              <input type="number" name="semester_no" class="form-control" min="1" max="12" value="{{ s.semester_no }}" required>
+                            </div>
+                            <div class="col-6">
+                              <label class="form-label">Academic Year</label>
+                              <input type="text" name="academic_year" class="form-control" value="{{ s.academic_year or '' }}">
+                            </div>
+                          </div>
+                          <div class="row g-2 mb-3">
+                            <div class="col-6">
+                              <label class="form-label">SGPA (0 - 10)</label>
+                              <input type="number" step="0.01" min="0" max="10" name="sgpa" class="form-control" value="{{ s.sgpa if s.sgpa is not none else '' }}">
+                            </div>
+                            <div class="col-6">
+                              <label class="form-label">CGPA (0 - 10)</label>
+                              <input type="number" step="0.01" min="0" max="10" name="cgpa" class="form-control" value="{{ s.cgpa if s.cgpa is not none else '' }}">
+                            </div>
+                          </div>
+                          <div class="card bg-light p-3 mb-3 border">
+                            <div class="form-check form-switch mb-2">
+                              <input class="form-check-input" type="checkbox" name="is_gap_after" id="editGapCheck{{ s.semester_id }}" {% if s.is_gap_after %}checked{% endif %}>
+                              <label class="form-check-label fw-bold" for="editGapCheck{{ s.semester_id }}">Academic Gap / Drop After This Semester</label>
+                            </div>
+                            <div>
+                              <label class="form-label">Gap Duration (Years)</label>
+                              <input type="number" min="0" max="10" name="gap_years" class="form-control" value="{{ s.gap_years }}">
+                            </div>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Remarks</label>
+                            <input type="text" name="remarks" class="form-control" value="{{ s.remarks or '' }}">
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                          <button type="submit" class="btn btn-navy btn-sm">Update Semester</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="9" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
+                No semester records found. Click <strong>Add Semester Result</strong> to create one.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Semester Modal -->
+<div class="modal fade" id="addSemesterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('add_semester_direct') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-graph-up me-2 text-primary"></i>Record Semester Result</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Select Student <span class="text-danger">*</span></label>
+            <select name="student_id" class="form-select" required>
+              <option value="">-- Choose Student --</option>
+              {% for s in all_students %}
+                <option value="{{ s.student_id }}">{{ s.roll_no }} - {{ s.first_name }} {{ s.last_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Semester Number <span class="text-danger">*</span></label>
+              <input type="number" name="semester_no" class="form-control" min="1" max="12" placeholder="e.g. 1" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Academic Year</label>
+              <input type="text" name="academic_year" class="form-control" placeholder="2024-2025">
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">SGPA (0.00 - 10.00)</label>
+              <input type="number" step="0.01" min="0" max="10" name="sgpa" class="form-control" placeholder="8.75">
+            </div>
+            <div class="col-6">
+              <label class="form-label">CGPA (0.00 - 10.00)</label>
+              <input type="number" step="0.01" min="0" max="10" name="cgpa" class="form-control" placeholder="8.75">
+            </div>
+          </div>
+          <div class="card bg-light p-3 mb-3 border">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" name="is_gap_after" id="addGapCheck">
+              <label class="form-check-label fw-bold" for="addGapCheck">Academic Gap / Drop After This Semester</label>
+            </div>
+            <div>
+              <label class="form-label">Gap Duration (Years)</label>
+              <input type="number" min="0" max="10" name="gap_years" class="form-control" value="0">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Remarks</label>
+            <input type="text" name="remarks" class="form-control" placeholder="Optional comments, honors, or gap justification.">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-navy btn-sm">Save Semester</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
