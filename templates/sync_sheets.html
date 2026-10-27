@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Google Sheets Sync &bull; Student Progression DBMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Google Sheets Synchronization</h1>
+    <p class="page-subtitle">One-way automated synchronization from MySQL 8.0 relational tables to Google Sheets spreadsheet worksheets.</p>
+  </div>
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <a href="/export-excel" class="btn btn-outline-success">
+      <i class="bi bi-file-earmark-excel-fill me-1"></i> Download Spreadsheet (.xlsx)
+    </a>
+    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#configSheetModal">
+      <i class="bi bi-gear-fill me-1"></i> Connect / Edit Sheet ID
+    </button>
+    {% if has_sheet_config %}
+      <form action="{{ url_for('run_sync') }}" method="post" id="syncForm" class="d-inline">
+        <button type="submit" class="btn btn-navy" id="syncBtn">
+          <i class="bi bi-cloud-arrow-up-fill me-1"></i> Sync Now to Google Sheets
+        </button>
+      </form>
+    {% else %}
+      <button type="button" class="btn btn-navy disabled" title="Configure credentials first">
+        <i class="bi bi-cloud-arrow-up me-1"></i> Sync Now (Setup Required)
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Integration Status Banner -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="app-card h-100 mb-0">
+      <div class="app-card-header">
+        <h3 class="app-card-title"><i class="bi bi-shield-check text-primary"></i> Integration Configuration Status</h3>
+      </div>
+      <div class="app-card-body">
+        <ul class="list-group list-group-flush mb-0">
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span><i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i>Spreadsheet ID (<code>GOOGLE_SHEET_ID</code>)</span>
+            {% if sheet_id %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">Configured: {{ sheet_id[:8] }}...{{ sheet_id[-6:] }}</span>
+            {% else %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Not Set in .env</span>
+            {% endif %}
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span><i class="bi bi-key-fill me-2 text-warning"></i>Service Account JSON Key (<code>GOOGLE_CREDENTIALS</code>)</span>
+            {% if creds_exists %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle">Found: {{ creds_file }}</span>
+            {% else %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle">File Missing</span>
+            {% endif %}
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span><i class="bi bi-arrows-collapse me-2 text-info"></i>Sync Direction</span>
+            <span class="badge bg-info-subtle text-info">One-Way (MySQL &rarr; Sheets)</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="app-card h-100 mb-0">
+      <div class="app-card-header">
+        <h3 class="app-card-title"><i class="bi bi-info-circle text-info"></i> Architectural Integrity</h3>
+      </div>
+      <div class="app-card-body">
+        <p class="small text-muted mb-2">
+          <strong>Why one-way synchronization?</strong> In an academic relational DBMS, MySQL serves as the single source of truth enforcing strict 3NF normalization, foreign keys, and CHECK constraints. 
+        </p>
+        <p class="small text-muted mb-0">
+          Exporting to Google Sheets provides department coordinators with readable reports, spreadsheet formulas, and external distribution without compromising database integrity or permitting unsanitized direct writes.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Synced Tables Overview -->
+<div class="app-card mb-4">
+  <div class="app-card-header">
+    <div class="d-flex align-items-center gap-2">
+      <h2 class="app-card-title"><i class="bi bi-layers-half text-navy"></i> Export Worksheets Snapshot Summary</h2>
+      <span class="badge bg-secondary-subtle text-secondary">8 Database Tables</span>
+    </div>
+  </div>
+  <div class="app-card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-custom">
+        <thead>
+          <tr>
+            <th>Target Worksheet Tab</th>
+            <th>Source Database Table</th>
+            <th>Primary Columns Exported</th>
+            <th>Current Live Rows</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Students</td>
+            <td><code>students</code></td>
+            <td>roll_no, first_name, last_name, email, phone, admission_year, status</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.students }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Academic_History</td>
+            <td><code>academic_history</code></td>
+            <td>student_roll, education_level, institution, completion_year, percentage</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.history }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Semesters</td>
+            <td><code>semesters</code></td>
+            <td>student_roll, semester_no, academic_year, sgpa, cgpa, is_gap_after, gap_years</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.semesters }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Subjects</td>
+            <td><code>subjects</code></td>
+            <td>subject_code, subject_name, subject_type, credits</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.subjects }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Semester_Marks</td>
+            <td><code>semester_subject_marks</code></td>
+            <td>student_roll, sem, subject_code, internal, external, practical, total, grade</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.marks }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Seminars</td>
+            <td><code>seminars</code></td>
+            <td>student_roll, title, seminar_type, organizer, event_date, certificate_url</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.seminars }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Activities</td>
+            <td><code>activities</code></td>
+            <td>student_roll, title, activity_type, role, organizer, activity_date</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.activities }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+          <tr>
+            <td class="fw-bold font-monospace"><i class="bi bi-table text-success me-2"></i>Drop_Years</td>
+            <td><code>drop_years</code></td>
+            <td>student_roll, year_start, year_end, duration_years, reason</td>
+            <td><span class="badge bg-light text-dark border">{{ table_counts.drops }}</span></td>
+            <td><span class="badge bg-success-subtle text-success">Ready</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Step-by-Step Google Setup Guide -->
+<div class="app-card">
+  <div class="app-card-header">
+    <h3 class="app-card-title"><i class="bi bi-gear-wide-connected text-primary"></i> Step-by-Step Google Sheets Configuration Guide</h3>
+  </div>
+  <div class="app-card-body">
+    <div class="row g-4">
+      <div class="col-md-6">
+        <h6 class="fw-bold text-navy"><i class="bi bi-1-circle-fill me-1 text-primary"></i> 1. Enable Google Sheets API</h6>
+        <p class="small text-muted mb-2">
+          Open the <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>, create a project, and enable the <strong>Google Sheets API</strong> and <strong>Google Drive API</strong>.
+        </p>
+
+        <h6 class="fw-bold text-navy mt-3"><i class="bi bi-2-circle-fill me-1 text-primary"></i> 2. Create Service Account &amp; Download Key</h6>
+        <p class="small text-muted mb-2">
+          Navigate to <em>IAM &amp; Admin &gt; Service Accounts</em>, create a new service account, generate a <strong>JSON Private Key</strong>, and save the downloaded file as:
+          <br><code>Student_Progression_DBMS_Project/credentials/service_account.json</code>
+        </p>
+      </div>
+
+      <div class="col-md-6">
+        <h6 class="fw-bold text-navy"><i class="bi bi-3-circle-fill me-1 text-primary"></i> 3. Share Spreadsheet with Service Account</h6>
+        <p class="small text-muted mb-2">
+          Create a new Google Sheet at <a href="https://sheets.new" target="_blank">sheets.new</a>. Click <strong>Share</strong> and grant <strong>Editor</strong> permissions to the service account client email (found inside the JSON key as <code>client_email</code>).
+        </p>
+
+        <h6 class="fw-bold text-navy mt-3"><i class="bi bi-4-circle-fill me-1 text-primary"></i> 4. Set Environment Variables in <code>.env</code></h6>
+        <p class="small text-muted mb-2">
+          Extract the sheet ID from the spreadsheet URL:
+          <br><code>https://docs.google.com/spreadsheets/d/<strong>&lt;SPREADSHEET_ID&gt;</strong>/edit</code>
+          <br>Add to your local <code>.env</code> file or use the <strong>Connect / Edit Sheet ID</strong> button above:
+        </p>
+        <pre class="bg-light p-2 rounded border small"><code>GOOGLE_SHEET_ID=your_spreadsheet_id_here
+GOOGLE_CREDENTIALS=credentials/service_account.json</code></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for Google Sheet Configuration -->
+<div class="modal fade" id="configSheetModal" tabindex="-1" aria-labelledby="configSheetModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('update_sheets_config') }}" method="post" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="configSheetModalLabel"><i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i>Configure Google Spreadsheet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Google Sheet URL or Sheet ID</label>
+            <input type="text" name="sheet_id_or_url" class="form-control" placeholder="https://docs.google.com/spreadsheets/d/... or ID" value="{{ sheet_id or '' }}">
+            <div class="form-text">Paste the full URL from your browser or just the alphanumeric spreadsheet ID.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Service Account JSON Key File (Optional upload)</label>
+            <input type="file" name="creds_file_upload" class="form-control" accept=".json">
+            <div class="form-text">Upload your Google Cloud service account credentials JSON file. Saved to <code>credentials/service_account.json</code>.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-navy">Save Configuration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const syncForm = document.getElementById('syncForm');
+  const syncBtn = document.getElementById('syncBtn');
+  if (syncForm && syncBtn) {
+    syncForm.addEventListener('submit', function() {
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Synchronizing with Google Sheets API...';
+    });
+  }
+</script>
+{% endblock %}
